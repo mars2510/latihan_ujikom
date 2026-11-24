@@ -1,0 +1,173 @@
+
+1. Rumus & Materi Dasar per Unit (Tinggal Ganti Nama Tabel)
+A. Perancangan & Skalabilitas (Unit 1)
+ * Konsep: Pisahkan kode tampilan/logika (PHP) dengan database (MySQL InnoDB), serta pasang INDEX pada kolom yang sering dicari (misal: kode_barang, no_anggota, nik).
+ * Rumus Relasi Tabel (ERD/LRS):
+   * 1-to-Many (1:N): Primary Key (id_master) ditaruh di tabel transaksi sebagai Foreign Key (FOREIGN KEY (id_master) REFERENCES master(id_master)).
+   * Many-to-Many (M:N): Pecah jadi tabel detail transaksi (contoh: transaksi \rightarrow detail_transaksi \leftarrow produk).
+
+B. Rumus SQL Wajib Hafal (Unit 2 & 3)
+ * Function SQL (Untuk Hitung Rumus / Mengembalikan 1 Nilai):
+   CREATE FUNCTION fn_nama(p_input INT) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN p_input * 2;
+END;
+
+ * Stored Procedure (Untuk Bungkus Proses Insert/Update):
+   CREATE PROCEDURE sp_simpan(IN p_nama VARCHAR(50))
+BEGIN
+    INSERT INTO tabel (nama) VALUES (p_nama);
+END;
+
+ * Trigger (Otomatis Update Stok/Saldo Saat Transaksi Masuk):
+   CREATE TRIGGER trg_otomatis AFTER INSERT ON transaksi
+FOR EACH ROW
+BEGIN
+    UPDATE master SET stok = stok - NEW.qty WHERE id = NEW.id_master;
+END;
+
+ * Transaction (Pengaman Data):
+   * START TRANSACTION; \rightarrow jalankan query \rightarrow COMMIT; (kalau sukses) atau ROLLBACK; (kalau gagal/batal).
+
+C. Rumus Algoritma & Kompleksitas (Unit 5)
+ * 3 Struktur Dasar Algoritma:
+   * Sequence (Runtutan): Kode jalan urut dari atas ke bawah.
+   * Selection (Percabangan): if / else atau switch (cek stok cukup atau tidak, cek login berhasil atau gagal).
+   * Iteration (Perulangan): foreach atau while (menampilkan baris data tabel).
+ * Rumus Big-O (Kompleksitas Waktu):
+   * Ambil 1 data pakai ID / Primary Key / Index = \mathcal{O}(\log n) (cepat).
+   * Loop menampilkan semua baris data di tabel (foreach) = \mathcal{O}(n) (sesuai jumlah data).
+   * Loop bersarang (foreach di dalam foreach) = \mathcal{O}(n^2) (lambat, harus dihindari).
+
+D. Rumus Profiling & Testing (Unit 7, 9, 10)
+ * Rumus Profiling PHP:
+   * Waktu eksekusi: $durasi = microtime(true) - $awal;
+   * Memori RAM: $memori = memory_get_usage();
+   * Cek kecepatan SQL: Tambahkan kata EXPLAIN sebelum SELECT ... untuk memastikan query memakai Index.
+ * Rumus Testing:
+   * Unit Test: Uji 1 fungsi tunggal (Input Normal vs Input Salah/Minus) pakai perbandingan Expected === Actual.
+   * Integration Test: Uji alur sambungan (Input Form PHP \rightarrow Masuk Tabel Transaksi \rightarrow Cek apakah Trigger berhasil ubah Tabel Master).
+2. Contoh Pertanyaan Mendadak & Jawaban Singkatnya
+Kalau soalnya beda tema dan asesor nanya mendadak, pakai template jawaban ini:
+ * Asesor: "Kenapa pakai InnoDB, bukan MyISAM?"
+   * Jawab: "Karena InnoDB mendukung relasi Foreign Key, Transaction (COMMIT/ROLLBACK), dan row-level locking sehingga aman saat banyak transaksi bersamaan."
+ * Asesor: "Kapan kamu pakai Trigger dibanding update manual lewat PHP?"
+   * Jawab: "Saat ada aturan bisnis yang wajib terjadi otomatis setiap ada transaksi—seperti potong stok atau tambah saldo—supaya data di database tetap konsisten meskipun di-input dari mana saja."
+ * Asesor: "Apa bedanya Stored Procedure dan Function?"
+   * Jawab: "Function wajib mengembalikan satu nilai (RETURN) dan bisa dipanggil di dalam SELECT, sedangkan Stored Procedure menjalankan serangkaian proses/query dan dipanggil pakai CALL."
+ * Asesor: "Jelaskan mana varian dan invarian di kodingan kamu!"
+   * Jawab: "Varian itu variabel yang nilainya berubah-ubah selama program jalan, seperti variabel $row saat looping atau sisa stok. Invarian itu syarat mutlak yang nilainya selalu terjaga benar, misalnya stok atau saldo tidak boleh kurang dari nol."
+ * Asesor: "Bagaimana cara kamu tahu program ini lemot atau tidak saat datanya ribuan?"
+   * Jawab: "Saya ukur pakai microtime(true) untuk waktu eksekusi PHP, memory_get_usage() untuk RAM, dan perintah EXPLAIN di MySQL untuk memastikan pencarian memakai Index (\mathcal{O}(\log n)), bukan Full Table Scan."
+ * Asesor: "Apa tujuan Code Review dan apa yang kamu cek?"
+   * Jawab: "Untuk memastikan kode bersih, mudah dirawat, dan aman sebelum dipakai. Yang dicek antara lain keamanan dari SQL Injection (pakai Prepared Statement), keamanan XSS (htmlspecialchars), dan validasi input agar tidak minus."
+ * Asesor: "Bedanya Unit Test dan Integration Test apa?"
+   * Jawab: "Unit Test menguji satu fungsi kecil secara terpisah (misal fungsi hitung diskon). Integration Test menguji kerja sama antar-komponen dari ujung ke ujung, seperti form PHP yang memicu Trigger di database."
+
+
+###
+
+1. Kalau Ditanya soal Trigger (Otomatisasi di Database)
+ * Bahasa manusianya:
+   > "Trigger itu ibarat robot penjaga di database, Pak/Bu. Jadi tiap ada data baru masuk di tabel transaksi, dia otomatis jalan sendiri buat nambahin saldo atau motong stok di tabel master tanpa perlu kita tulis query UPDATE lagi di PHP. Jadi datanya gak bakal selisih."
+   > 
+ * Rumus kodingannya (SQL):
+   CREATE TRIGGER nama_trigger AFTER INSERT ON tabel_transaksi
+FOR EACH ROW
+BEGIN
+    -- NEW.nominal artinya data yang baru aja di-input
+    UPDATE tabel_master 
+    SET saldo = saldo + NEW.nominal 
+    WHERE id = NEW.id_master;
+END;
+
+2. Kalau Ditanya soal Function vs Stored Procedure
+ * Bahasa manusianya:
+   > "Gampangnya gini: Function itu cuma buat ngitung rumus dan wajib ngembaliin satu hasil akhir (pakai RETURN), kayak kalkulator. Kalau Stored Procedure itu buat ngebungkus satu paket perintah—misalnya validasi dulu baru simpan ke tabel—dan manggilnya pakai CALL."
+   > 
+ * Rumus kodingan Function (SQL):
+   CREATE FUNCTION hitung_total(harga INT, qty INT) RETURNS INT DETERMINISTIC
+BEGIN
+    RETURN harga * qty; -- Wajib ada RETURN
+END;
+-- Cara manggilnya: SELECT hitung_total(10000, 3);
+
+ * Rumus kodingan Stored Procedure (SQL):
+   CREATE PROCEDURE simpan_data(IN p_nama VARCHAR(50))
+BEGIN
+    INSERT INTO anggota (nama) VALUES (p_nama);
+END;
+-- Cara manggilnya: CALL simpan_data('Budi');
+
+3. Kalau Ditanya soal Transaction (COMMIT & ROLLBACK)
+ * Bahasa manusianya:
+   > "Itu buat pengaman biar data gak masuk setengah-setengah kalau tiba-tiba internet putus atau error di tengah jalan. Kalau semua proses lancar sampai bawah, baru kita sahkan pakai COMMIT. Kalau ada satu aja yang error, kita batalin semua balik ke awal pakai ROLLBACK."
+   > 
+ * Rumus kodingannya (PHP PDO):
+   try {
+    $pdo->beginTransaction(); // Mulai mode aman
+
+    // Jalankan query simpan/update di sini...
+
+    $pdo->commit(); // Semua sukses -> simpan permanen!
+} catch (Exception $e) {
+    $pdo->rollBack(); // Ada yang gagal -> batalin semua!
+}
+
+4. Kalau Ditanya soal Varian & Invarian
+ * Bahasa manusianya:
+   > "Varian itu variabel yang nilainya berubah-ubah pas program lagi jalan, contohnya variabel $row pas lagi looping tabel atau nilai sisa tagihan tiap kali dicicil. Kalau Invarian itu aturan harga mati yang nilainya gak boleh dilanggar dari awal sampai akhir, misalnya stok barang atau saldo anggota gak boleh minus di bawah nol."
+   > 
+ * Rumus kodingannya (PHP):
+   $total = 0; // <-- Ini VARIAN (nilainya terus nambah tiap putaran loop)
+
+foreach ($data as $row) { // <-- $row juga VARIAN
+    $total += $row['nominal'];
+}
+
+// <-- Ini INVARIAN (syarat mutlak yang selalu dijaga tetap benar)
+if ($sisa_tagihan < 0) {
+    $sisa_tagihan = 0; 
+}
+
+5. Kalau Ditanya soal Kompleksitas Algoritma (Big-O)
+ * Bahasa manusianya:
+   > "Itu buat ngukur seberapa cepat kodingan kita kalau datanya nanti udah ribuan. Kalau kita nyari 1 data pakai ID atau kolom yang udah di-INDEX, kecepatannya \mathcal{O}(\log n), itu ngebut banget. Kalau nampilin semua baris pakai satu foreach, kecepatannya \mathcal{O}(n), masih aman. Yang bahaya itu kalau bikin foreach di dalam foreach, jadinya \mathcal{O}(n^2), makin banyak data makin lemot."
+   > 
+ * Rumus kodingannya (PHP):
+   // O(log n) -> Cepat (cari 1 data pakai Primary Key / Index)
+$stmt = $pdo->prepare("SELECT * FROM anggota WHERE id = ?");
+
+// O(n) -> Normal (looping 1 tingkat untuk tampilkan tabel)
+foreach ($list_data as $item) {
+    echo $item['nama'];
+}
+
+6. Kalau Ditanya soal Profiling (Cek Lemot & Memori)
+ * Bahasa manusianya:
+   > "Buat ngecek bagian mana yang bikin aplikasi berat, saya pasang stopwatch di awal dan akhir kode pakai microtime(true) buat ngitung detiknya, sama memory_get_usage() buat ngecek makan RAM berapa KB. Kalau di databasenya, saya ketik EXPLAIN di depan SELECT buat mastiin query-nya udah baca Index."
+   > 
+ * Rumus kodingannya (PHP):
+   $waktu_mulai = microtime(true); // Nyalain stopwatch
+$mem_mulai   = memory_get_usage();
+
+// --- Kode atau query yang mau dites ditaruh di sini ---
+
+$durasi = microtime(true) - $waktu_mulai; // Matiin stopwatch (dalam detik)
+$ram    = memory_get_usage() - $mem_mulai; // Selisih RAM (dalam byte)
+
+7. Kalau Ditanya soal Unit Test vs Integration Test
+ * Bahasa manusianya:
+   > "Unit Test itu ngetes satu fungsi kecil sendirian tanpa nyambung ke mana-mana, misalnya ngetes rumus hitung bunga: kalau dimasukin angka normal hasilnya bener gak, kalau dimasukin angka minus ditolak gak. Kalau Integration Test itu ngetes sambungan antar-bagian dari ujung ke ujung: input dari form PHP \rightarrow masuk database \rightarrow Trigger-nya beneran jalan ngubah tabel sebelah gak."
+   > 
+ * Rumus kodingan Unit Test (PHP):
+   // Fungsi yang mau dites
+function kali_dua($angka) { return $angka * 2; }
+
+// Cara ngetesnya (Assertion: bandingkan harapan vs kenyataan)
+$harapan   = 10;
+$kenyataan = kali_dua(5);
+
+echo ($harapan === $kenyataan) ? "LULUS (PASS)" : "GAGAL (FAIL)";
+
+
